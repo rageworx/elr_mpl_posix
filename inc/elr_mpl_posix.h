@@ -149,7 +149,7 @@ ELR_MPL_API elr_mpl_t elr_mpl_create(elr_mpl_ht fpool,
 	elr_mpl_callback on_free);
 
 /*
-** 创建一个带线程同步支持的内存池，并指定分配单元大小。
+** Create a memory pool with thread synchronization support and specify the allocation unit size.
 */
 ELR_MPL_API elr_mpl_t elr_mpl_create_sync(elr_mpl_ht fpool,
 	size_t obj_size,
@@ -157,13 +157,13 @@ ELR_MPL_API elr_mpl_t elr_mpl_create_sync(elr_mpl_ht fpool,
 	elr_mpl_callback on_free);
 
 /*
-** 创建可以从中申请不同大小内存块的内存池。
-** 第一个参数表示父内存池，如果其为NULL，表示创建的内存池的父内存池是全局内存池。
-** 第二个参数提供一个函数指针，该函数会在成功申请内存后执行。
-** 第三个参数提供一个函数指针，该函数会在释放内存时执行。
-** 第四个参数表示有多少个不同大小的obj_size。
-** 之后传入多个int类型的参数指定将要用到的多个最可能obj_size
-** obj_size必须是int类型，否则会创建失败
+** Create a memory pool from which you can request memory blocks of different sizes.
+** The first parameter represents the parent memory pool. If it is NULL, it means that the parent memory pool of the created memory pool is the global memory pool.
+** The second parameter provides a function pointer, which will be executed after successfully requesting memory.
+** The third parameter provides a pointer to a function that will be executed when the memory is freed.
+** The fourth parameter indicates how many different sizes of obj_size there are.
+** After that, pass in multiple int type parameters to specify the most likely obj_size that will be used
+** obj_size must be of type int, otherwise the creation will fail
 */
 ELR_MPL_API elr_mpl_t elr_mpl_create_multi(elr_mpl_ht fpool,
 	int obj_size_count,
@@ -173,7 +173,7 @@ ELR_MPL_API elr_mpl_t elr_mpl_create_multi(elr_mpl_ht fpool,
 
 
 /*
-** 创建可以从中申请不同大小内存块的并带线程同步支持内存池。
+** Create a memory pool with thread synchronization support from which you can request memory blocks of different sizes.
 */
 /*! \brief create a memory pool.
  *  \param fpool the parent pool of the about to created pool.
@@ -191,9 +191,9 @@ ELR_MPL_API elr_mpl_t elr_mpl_create_multi_sync(elr_mpl_ht fpool,
 
 
 /*
-** 判断内存池是否是有效的，一般在创建完成后立即调用。
-** 返回0表示无效
-** pool不可为NULL
+** To determine whether the memory pool is valid, it is generally called immediately after the creation is completed.
+** return 0 for invalid
+** pool cannot be NULL
 */
 /*! \brief verifies that a memory pool is valid or not.
  *  \param pool  pointer to a elr_mpl_t type variable.
@@ -215,13 +215,13 @@ ELR_MPL_API int  elr_mpl_avail(elr_mpl_ht pool);
 ELR_MPL_API void* elr_mpl_alloc(elr_mpl_ht pool);
 
 /*
-** 从内存池中申请指定大小的内存。
-** pool为NULL时从全局内存池申请
+** Apply for the specified size of memory from the memory pool.
+** When pool is NULL, apply from the global memory pool
 */
 ELR_MPL_API void* elr_mpl_alloc_multi(elr_mpl_ht pool, size_t size);
 
 /*
-** 获取从内存池中申请的内存块的尺寸。
+** Get the size of the memory block requested from the memory pool.
 */
 /*! \brief get the size of a memory block from a memory pool.
  *  \param mem pointer to a memory block from a memory pool.
