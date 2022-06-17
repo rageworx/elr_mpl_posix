@@ -1,4 +1,4 @@
-TLIB=libemrmempool.a
+TLIB=libelrmempool.a
 TDIR=lib
 ODIR=obj
 BDIR=bin
