@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "elr_mpl.h"
+#include "elr_mpl_posix.h"
 
 int main()
 {
@@ -55,7 +55,6 @@ int main()
 
 	elr_mpl_finalize();
 
-	getchar();
 	return 0;
 }
 

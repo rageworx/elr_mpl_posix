@@ -1,3 +1,11 @@
+# POSIX version #
+
+This elr_mpl version is made for POSIX, An origial repository was designed to MSVC.
+
+Tested on 
+ - MSYS2 + MinGW-W64
+ - Debian-Linux x86.64, arm32, arm64(aarch64)
+
 # Preface #
 
 Usually, memory allocation of OS is fast, especially the computer has just started. But over time memory fragmentation becomes serious, memory allocation  and access will become more and more slowly. Memory fragmentation caused by the continuously allocate and free memory of different size. 
@@ -422,6 +430,6 @@ unsigned long my_clock()
 
 This memory pool will gain better performance than the test result when used in a real program. For real program, memory consumption will becomes stable after a period. By the time there are no memory allocation in OS level, just reuse the memory blocks in memory pools. In the test program, OS level memory allocation always exists.
 
-#To do#
+# To do #
 
 This memory pool had been used in manay production environment and its ability had been proved. Event so, there are still plenty of space for improvement. Now each memory pool has its own mutex object, under many circumstance this is not a must. So there are at least two points need to be improved. First, reduce the consumption of mutex object. Second, make it to be a all-purpose memory pool, like appache memory pool, many regular size memory blocks can be be allocated from it.
