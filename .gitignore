@@ -46,3 +46,5 @@
 *.ipch
 /output/
 
+# Local
+bin/

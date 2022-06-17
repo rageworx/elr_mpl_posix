@@ -9,6 +9,7 @@ all: prepare clean ${TARGET}
 test1: prepare ${BDIR}/test1
 test2: prepare ${BDIR}/test2
 example: prepare ${BDIR}/example
+example2: prepare ${BDIR}/example2
 
 prepare:
 	@mkdir -p ${ODIR}
@@ -34,6 +35,9 @@ ${BDIR}/test1: test/test.c ${TARGET}
 ${BDIR}/test2: test/test.c src/elr_mpl_posix.c
 	@g++ -DDEBUG -Iinc $^ -g3 -o $@
 
-${BDIR}/example: example/example.c src/elr_mpl_posix.c
+${BDIR}/example2: example/example.c src/elr_mpl_posix.c
 	@g++ -Iinc $^ -g3 -o $@
+
+${BDIR}/example: example/example.c
+	@g++ -Iinc $< -Llib -lemrmempool -O2 -o $@
 
