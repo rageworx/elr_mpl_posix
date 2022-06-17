@@ -86,9 +86,11 @@ typedef struct __elr_mem_pool
     elr_mem_slice               *first_occupied_slice;
     /* The label of the memory slice that holds the object of this memory pool */
     int                          slice_tag;
+#ifdef USE_THREADLOCK
     /*Whether the synchronization lock is created*/
 	int                          sync;
     pthread_mutex_t              pool_mutex;
+#endif /// of USE_PTHREAD
 }
 elr_mem_pool;
 
@@ -188,15 +190,14 @@ ELR_MPL_API int elr_mpl_init()
         g_mem_pool.on_slice_free = NULL;
         g_mem_pool.first_occupied_slice = NULL;
         g_mem_pool.slice_tag = 0;
+#ifdef USE_THREADLOCK
 		g_mem_pool.sync = 1;
-        
         if( pthread_mutex_init( &g_mem_pool.pool_mutex, NULL ) != 0 )
         {
             elr_atomic_dec( &g_mpl_refs );
             g_mem_pool.sync = 0;
             return 0;
         }
-
 		g_multi_mem_pool = elr_mpl_create_multi_sync(NULL, obj_size_count, obj_size, NULL, NULL);
 		if (g_multi_mem_pool.pool == NULL)
 		{
@@ -204,6 +205,14 @@ ELR_MPL_API int elr_mpl_init()
             g_mem_pool.sync = 0;
 			return 0;
 		}
+#else
+		g_multi_mem_pool = elr_mpl_create_multi(NULL, obj_size_count, obj_size, NULL, NULL);
+		if (g_multi_mem_pool.pool == NULL)
+		{
+			g_mpl_refs--;
+			return 0;
+		}
+#endif /// OF USE_THREADLOCK
     }
 
     return 1;
@@ -284,7 +293,7 @@ elr_mem_pool* _elr_mpl_create(elr_mem_pool* fpool,
     
     pool = (elr_mem_pool*)((char*)pslice
         + ELR_ALIGN(sizeof(elr_mem_slice),sizeof(int)));
-
+#ifdef USE_THREADLOCK
     pool->sync = sync;
 	if (sync == 1 && pthread_mutex_init(&pool->pool_mutex, NULL) != 0)
     {
@@ -292,7 +301,7 @@ elr_mem_pool* _elr_mpl_create(elr_mem_pool* fpool,
         elr_mpl_free(pool);
     	return NULL;
     }
-    
+#endif
 	pool->slice_tag = pslice->tag;
 	pool->first_child = NULL;
 	pool->parent = fpool == NULL ? &g_mem_pool : fpool;
@@ -314,19 +323,19 @@ elr_mem_pool* _elr_mpl_create(elr_mem_pool* fpool,
     pool->on_slice_alloc = on_alloc;
     pool->on_slice_free = on_free;
     pool->first_occupied_slice = NULL;
-
+#ifdef USE_THREADLOCK
     if(pool->parent->sync == 1)
         pthread_mutex_lock(&pool->parent->pool_mutex);
-        
+#endif
     pool->prev = NULL;
     pool->next = pool->parent->first_child;
     if(pool->next != NULL)
         pool->next->prev = pool;
     pool->parent->first_child = pool;
-    
+#ifdef USE_THREADLOCK
 	if (pool->parent->sync == 1)
 		pthread_mutex_unlock(&pool->parent->pool_mutex);
-    
+#endif
     return pool;
 }
 
@@ -547,10 +556,10 @@ ELR_MPL_API void * elr_mpl_alloc_multi(elr_mpl_ht hpool, size_t size)
 	assert(pool->multi != NULL);
 
 	parent_pool = pool->multi[pool->multi_count - 1];
-
+#ifdef USE_THREADLOCK
 	if(pool->sync == 1)
 		pthread_mutex_lock(&pool->pool_mutex);
-
+#endif
 	for (i = 0; i < pool->multi_count; i++)
 	{
 		if (pool->multi[i]->object_size >= size)
@@ -592,10 +601,10 @@ ELR_MPL_API void * elr_mpl_alloc_multi(elr_mpl_ht hpool, size_t size)
 	{
 		mem = elr_mpl_alloc(&alloc_mpl);
 	}
-
+#ifdef USE_THREADLOCK
 	if (pool->sync == 1)
 		pthread_mutex_unlock(&pool->pool_mutex);
-
+#endif
 	return mem;
 }
 
@@ -628,9 +637,10 @@ ELR_MPL_API void  elr_mpl_free(void* mem)
 #ifdef DEBUG
 	assert(_elr_mpl_avail(pool) != 0);
 #endif
+#ifdef USE_THREADLOCK
 	if (pool->sync == 1)
 		pthread_mutex_lock(&pool->pool_mutex);
-        
+#endif
 	slice->tag++;
 	node->using_slice_count--;
 
@@ -674,12 +684,12 @@ ELR_MPL_API void  elr_mpl_free(void* mem)
 			node->free_slice_tail = slice;
         }
     }
-    
+#ifdef USE_THREADLOCK
 	if (pool->sync == 1)
     {
         pthread_mutex_unlock(&pool->pool_mutex);
     }
-
+#endif
     return;
 }
 
@@ -703,11 +713,10 @@ ELR_MPL_API void elr_mpl_destroy(elr_mpl_ht hpool)
 #endif
     if ( pool == NULL )
         return;
-
-
+#ifdef USE_THREADLOCK
     if (pool->sync == 1)
         pthread_mutex_lock(&pool->pool_mutex);
-
+#endif 
 	if (pool->multi != NULL)
     {
 		for (j = 0; j < pool->multi_count; j++)
@@ -722,9 +731,10 @@ ELR_MPL_API void elr_mpl_destroy(elr_mpl_ht hpool)
 
     hpool->pool = NULL;
     hpool->tag = 0;
-
+#ifdef USE_THREADLOCK
     if (pool->sync == 1)
         pthread_mutex_unlock(&pool->pool_mutex);
+#endif
 }
 
 /*
@@ -734,24 +744,26 @@ ELR_MPL_API void elr_mpl_destroy(elr_mpl_ht hpool)
 ELR_MPL_API void elr_mpl_finalize()
 {
     long   refs = 1;
-    
+#ifdef USE_THREADLOCK
     pthread_mutex_lock(&g_mem_pool.pool_mutex);
-        
+#endif
     refs = elr_atomic_dec(&g_mpl_refs);
     if(refs == 0)
     {
+#ifdef USE_THREADLOCK
         // bug fix, don't lock g_mem_pool.pool_mutex when it going finalize.
         pthread_mutex_unlock(&g_mem_pool.pool_mutex);
+#endif
         _elr_mpl_destory(&g_mem_pool, 0, 1);
     }
     else
     {
         fprintf( stderr, "refs = elr_atomic_dec(&g_mpl_refs) == %d?\n", refs );
     }
-    
+#ifdef USE_THREADLOCK
     pthread_mutex_unlock(&g_mem_pool.pool_mutex);
+#endif
 }
-
 
 void _elr_alloc_mem_node(elr_mem_pool *pool)
 {
@@ -853,10 +865,10 @@ elr_mem_slice* _elr_slice_from_pool(elr_mem_pool* pool)
 #ifdef DEBUG
     assert(pool != NULL);
 #endif
-
+#ifdef USE_THREADLOCK
     if (pool->sync == 1)
         pthread_mutex_lock(&pool->pool_mutex);
-
+#endif
     if(pool->first_free_slice != NULL)
     {
         slice = pool->first_free_slice;
@@ -892,10 +904,10 @@ elr_mem_slice* _elr_slice_from_pool(elr_mem_pool* pool)
 			pool->first_occupied_slice->prev = slice;
 		pool->first_occupied_slice = slice;
     }
-    
+#ifdef USE_THREADLOCK
     if (pool->sync == 1)
         pthread_mutex_unlock(&pool->pool_mutex);
-
+#endif
 	return slice;
 }
 
@@ -905,13 +917,13 @@ void _elr_mpl_destory(elr_mem_pool *pool, int inner, int lock_this)
     elr_mem_pool   *temp_pool = NULL;
     elr_mem_node  *temp_node = NULL;
     size_t                  index = 0;
-
+#ifdef USE_THREADLOCK
 	if (inner == 1 && lock_this == 1 && pool->sync == 1)
         pthread_mutex_lock(&(pool->pool_mutex));
         
 	if (inner == 0 && pool->parent != NULL && pool->parent->sync == 1)
 		pthread_mutex_lock(&(pool->parent->pool_mutex));
-
+#endif
 	if (pool->next != NULL)
 		pool->next->prev = pool->prev;
     
@@ -920,15 +932,15 @@ void _elr_mpl_destory(elr_mem_pool *pool, int inner, int lock_this)
 
 	if (pool->prev == NULL && pool->parent != NULL)
 		pool->parent->first_child = pool->next;
-    
+#ifdef USE_THREADLOCK
 	if (inner == 0 && pool->parent != NULL && pool->parent->sync == 1)
 	    pthread_mutex_unlock(&(pool->parent->pool_mutex));
-
+#endif
     while((temp_pool = pool->first_child) != NULL)
     {
 		_elr_mpl_destory(temp_pool, 1, lock_this);
 	}
-
+#ifdef USE_THREADLOCK
 	if (pool->sync == 1)
 	{
 		if (inner == 1 && lock_this == 1)
@@ -936,7 +948,7 @@ void _elr_mpl_destory(elr_mem_pool *pool, int inner, int lock_this)
 		pthread_mutex_destroy(&pool->pool_mutex);
         pool->sync = 0;
     }
-
+#endif
     if (pool->on_slice_free != NULL)
     {
         elr_mem_slice* temp_slice = pool->first_occupied_slice;
@@ -959,10 +971,10 @@ void _elr_mpl_destory(elr_mem_pool *pool, int inner, int lock_this)
 
 	pool->parent = NULL;
 	pool->slice_tag = -1;
-    
+#ifdef USE_THREADLOCK
     if (inner == 1 && lock_this == 1 && pool->sync == 1)
         pthread_mutex_unlock(&pool->pool_mutex);
-    
+#endif
 	if(pool != g_multi_mem_pool.pool && pool->multi != NULL)
 		elr_mpl_free(pool->multi);
     
