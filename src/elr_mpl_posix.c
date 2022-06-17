@@ -625,8 +625,9 @@ ELR_MPL_API void  elr_mpl_free(void* mem)
     elr_mem_node*  node = slice->node;
     elr_mem_pool*  pool = node->owner;
 
+#ifdef DEBUG
 	assert(_elr_mpl_avail(pool) != 0);
-
+#endif
 	if (pool->sync == 1)
 		pthread_mutex_lock(&pool->pool_mutex);
         
