@@ -1,8 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include "elr_mpl.h"
-#include "time.h"
+#include "elr_mpl_posix.h"
 #include "cunit.h"
 
 unsigned long my_clock()
